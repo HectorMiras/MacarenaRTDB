@@ -1,0 +1,1 @@
+"C:\ProgramData\Anaconda3\python.exe" "C:\Datos\MosaiqMacarenaMongoDB\ImportJSONData\sript_ProcessImportJSON.py"
