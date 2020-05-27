@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 import datetime
 import FuncRepo
+import pandas
 
 def main():
     client = MongoClient('mongodb://10.233.42.60:27017') # Establece una conexión a MongoDB
@@ -11,7 +12,12 @@ def main():
     end_date = datetime.datetime(2020, 3, 31, 0, 0, 0)
 
     lista_pacientes_problemas = FuncRepo.consulta_pacientes_problemas(pacientes, start_date, end_date)
-
+    pd_problemas = pandas.DataFrame(lista_pacientes_problemas)
+    print('')
+    print('Imprime pandas:')
+    #print(pd_problemas)
+    print(pandas.pivot_table(pd_problemas, index=["Nombre"], aggfunc='first'))
+    print('')
     lista_pacientes_estadistica_planis = FuncRepo.consulta_estadisticas_planificaciones(pacientes, start_date, end_date)
 
     lista_pacientes_SBRT = FuncRepo.consulta_SBRTs(pacientes, start_date, end_date)

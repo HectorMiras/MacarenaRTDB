@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 
 def encuentra_problemas(p):
     hoy = datetime.datetime.today()
-    problemas = []
     an = p['ID']
     nombre = p['Nombre']
     mensajes = []
@@ -97,8 +96,10 @@ def encuentra_problemas(p):
                         mensaje = f'La planificacion {fecha_plan} no tiene sesiones de tratamiento, {delta.days} días'
                         #mensajes.append(mensaje)
     if len(mensajes) > 0:
-        problemas.append({'ID': an, 'Nombre': nombre, 'Problemas': mensajes})
-    return problemas
+        problema = {'ID': an, 'Nombre': nombre, 'Problemas': mensajes}
+    else:
+        problema = ''
+    return problema
 
 def consulta_pacientes_problemas(pacientes, start_date, end_date):
     str_fecha_inicio = start_date.strftime("%d/%m/%Y")
@@ -126,8 +127,8 @@ def consulta_pacientes_problemas(pacientes, start_date, end_date):
     print('')
     print(f'Pacientes con problemas: {len(lista_pacientes_problemas)}')
 
-    return list_consulta
-
+    #return list_consulta
+    return lista_pacientes_problemas
 
 def consulta_estadisticas_planificaciones(pacientes, start_date, end_date):
     str_fecha_inicio = start_date.strftime("%d/%m/%Y")
