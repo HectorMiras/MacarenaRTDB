@@ -7,6 +7,7 @@ def encuentra_problemas(p):
     problemas = []
     an = p['ID']
     nombre = p['Nombre']
+    mensajes = []
     for c in p['Casos']:
         fecha_caso = c['FechaInicio']
         if 'Trials' in c:
@@ -14,39 +15,39 @@ def encuentra_problemas(p):
                 if('Planificaciones' in t):
                     for plan in t['Planificaciones']:
                         if 'Motivo' not in plan:
-                            mensaje = f'{nombre}. Planificación sin motivo.'
-                            problemas.append({an: mensaje})
+                            mensaje = 'Planificación sin motivo.'
+                            mensajes.append(mensaje)
                         if 'Acelerador' not in plan:
-                            mensaje = f'{nombre}. Planificación sin acelerador.'
-                            problemas.append({an: mensaje})
+                            mensaje = 'Planificación sin acelerador.'
+                            mensajes.append(mensaje)
                         if 'Tecnica' not in plan:
-                            mensaje = f'{nombre}. Planificación sin tecnica de tratamiento.'
-                            problemas.append({an: mensaje})
+                            mensaje = 'Planificación sin tecnica de tratamiento.'
+                            mensajes.append(mensaje)
                         #if 'Radiofisico' not in plan:
                             #mensaje = f'{nombre}. Planificación sin radiofisico.'
                             #problemas.append({an: mensaje})
                 if('Prescripciones' in t):
                     for pres in t['Prescripciones']:
                         if 'Motivo' not in pres:
-                            mensaje = f'{nombre}. Prescripción sin motivo.'
-                            problemas.append({an: mensaje})
+                            mensaje = 'Prescripción sin motivo.'
+                            mensajes.append(mensaje)
                         if 'DosisPTV1' not in pres:
-                            mensaje = f'{nombre}. Prescripción sin dosis a PTV1.'
-                            problemas.append({an: mensaje})
+                            mensaje = 'Prescripción sin dosis a PTV1.'
+                            mensajes.append(mensaje)
                 if('Simulaciones' in t):
                     for sim in t['Simulaciones']:
                         if 'Motivo' not in sim:
-                            mensaje = f'{nombre}. Simulación sin motivo.'
-                            problemas.append({an: mensaje})
+                            mensaje = 'Simulación sin motivo.'
+                            mensajes.append(mensaje)
                         if 'Orientacion' not in sim:
-                            mensaje = f'{nombre}. Simulación sin orientación.'
-                            problemas.append({an: mensaje})
+                            mensaje = 'Simulación sin orientación.'
+                            mensajes.append(mensaje)
                 if('Planificaciones' in t) and ('Prescripciones' not in t):
-                    mensaje = f'{nombre}. Planificación sin prescripcion.'
-                    problemas.append({an: mensaje})
+                    mensaje = 'Planificación sin prescripcion.'
+                    mensajes.append(mensaje)
                 if('Prescripciones' in t) and ('Simulaciones' not in t):
-                    mensaje = f'{nombre}. Prescripción sin simulación.'
-                    problemas.append({an: mensaje})
+                    mensaje = 'Prescripción sin simulación.'
+                    mensajes.append(mensaje)
                 if ('Planificaciones' in t) and ('Prescripciones' in t) and ('Simulaciones' in t):
                     for pl in t['Planificaciones']:
                         # encuentra prescripcion y simulacion correspondiente. La de fecha más cercana
@@ -62,40 +63,41 @@ def encuentra_problemas(p):
                                 pres = pr
                         delta = pres['FechaInicio'] - sim['FechaInicio']
                         if delta.days > 30:
-                            mensaje = f'{nombre}. Demora simulacion-prescripcion de {delta.days}'
-                            problemas.append({an: mensaje})
+                            mensaje = f'Demora simulacion-prescripcion de {delta.days}'
+                            mensajes.append(mensaje)
                         if delta.days < 0:
-                            mensaje = f'{nombre}. Fecha de prescripción anterior a la simulación, {delta.days} días'
-                            problemas.append({an: mensaje})
+                            mensaje = f'Fecha de prescripción anterior a la simulación, {delta.days} días'
+                            mensajes.append(mensaje)
 
                         delta = pl['FechaInicio'] - pres['FechaInicio']
                         if delta.days > 30:
-                            mensaje = f'{nombre}. Demora prescripcion-planificación de {delta.days}'
-                            problemas.append({an: mensaje})
+                            mensaje = f'Demora prescripcion-planificación de {delta.days}'
+                            mensajes.append(mensaje)
                         if delta.days < 0:
-                            mensaje = f'{nombre}. Fecha de planificación anterior a la prescripción, {delta.days} días'
-                            problemas.append({an: mensaje})
+                            mensaje = f'Fecha de planificación anterior a la prescripción, {delta.days} días'
+                            mensajes.append(mensaje)
 
                     if 'SesionesTto' in t:
                         delta = t['SesionesTto'][0]['FechaInicio'] - t['Planificaciones'][-1]['FechaInicio']
                         if delta.days > 60:
-                            mensaje = f'{nombre}. Demora planificación-inicio de {delta.days}'
-                            problemas.append({an: mensaje})
+                            mensaje = f'Demora planificación-inicio de {delta.days}'
+                            mensajes.append(mensaje)
                         if delta.days < 0:
-                            mensaje = f'{nombre}. Fecha de inicio de tratamiento a' \
+                            mensaje = f'Fecha de inicio de tratamiento a' \
                                       f'nterior a la planificación {delta.days} días'
-                            problemas.append({an: mensaje})
+                            mensajes.append(mensaje)
                         delta = t['SesionesTto'][0]['FechaInicio'] - c['FechaInicio']
                         if delta.days > 120:
-                            mensaje = f'{nombre}. Demora primera consulta-inicio tratamiento de {delta.days}'
-                            problemas.append({an: mensaje})
+                            mensaje = f'Demora primera consulta-inicio tratamiento de {delta.days}'
+                            mensajes.append(mensaje)
                     else:
                         # Busca pacientes con planificación pero sin sesiones de tto
                         delta = hoy - pl['FechaInicio']
                         fecha_plan = pl['FechaInicio'].strftime("%d/%m/%Y")
-                        mensaje = f'{nombre}. La planificacion {fecha_plan} no tiene sesiones de tratamiento, {delta.days} días'
-                        # problemas.append({an: mensaje})
-
+                        mensaje = f'La planificacion {fecha_plan} no tiene sesiones de tratamiento, {delta.days} días'
+                        #mensajes.append(mensaje)
+    if len(mensajes) > 0:
+        problemas.append({'ID': an, 'Nombre': nombre, 'Problemas': mensajes})
     return problemas
 
 def consulta_pacientes_problemas(pacientes, start_date, end_date):
