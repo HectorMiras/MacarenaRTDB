@@ -150,9 +150,10 @@ def consulta_estadisticas_planificaciones(pacientes, start_date, end_date):
     cont_ALES = {'Siemens Primus': 0, 'Siemens Oncor': 0, 'Elekta Versa': 0}
     cont_ALESsTecnicas = {'Siemens Primus': cont_tecnica0, 'Siemens Oncor': cont_tecnica1,
                           'Elekta Versa': cont_tecnica2}
+    lista_pacientes = []
     fecha_str = ''
     for p in list_consulta:
-        nuhsa = p['ID']
+        ID = p['ID']
         nombre = p['Nombre']
         # print(nuhsa + ' ' + nombre)
         for c in p['Casos']:
@@ -164,13 +165,22 @@ def consulta_estadisticas_planificaciones(pacientes, start_date, end_date):
                                 if 'Motivo' in pl:
                                     cont_planis = cont_planis + 1
                                     if 'Acelerador' in pl:
-                                        cont_ALES[pl['Acelerador']] = cont_ALES[pl['Acelerador']] + 1
+                                        ale = pl['Acelerador']
+                                        cont_ALES[ale] = cont_ALES[ale] + 1
                                         if 'Tecnica' in pl:
-                                            cont_ALESsTecnicas[pl['Acelerador']][pl['Tecnica']] = \
-                                            cont_ALESsTecnicas[pl['Acelerador']][pl['Tecnica']] + 1
+                                            tec = pl['Tecnica']
+
                                         else:
-                                            cont_ALESsTecnicas[pl['Acelerador']]['SC'] = \
-                                            cont_ALESsTecnicas[pl['Acelerador']]['SC'] + 1
+                                            tec = 'SC'
+                                        cont_ALESsTecnicas[ale][tec] = cont_ALESsTecnicas[ale][tec] + 1
+                                        lista_pacientes.append(
+                                            {
+                                                'ID': ID,
+                                                'Nombre': nombre,
+                                                'Acelerador': ale,
+                                                'Tecnica': tec,
+                                                'Numero': 1
+                                            })
                             else:
                                 fecha_str = pl['FechaInicio']
                                 # print(f'NO cumple criterio: {fecha_str}')
@@ -188,7 +198,7 @@ def consulta_estadisticas_planificaciones(pacientes, start_date, end_date):
             num = cont_ALESsTecnicas[ale][tec]
             print(f'    {tec}: {num}')
 
-    return list_consulta
+    return lista_pacientes
 
 
 # Esta clasificación por patologías no queda clara. Faltaría incluir metástasis en la lista de patologías?
@@ -225,7 +235,60 @@ def consulta_SBRTs(pacientes, start_date, end_date):
         num = cont_patologias[pat]
         print(f'{pat}: {num}')
 
-    return list_consulta
+    return cont_patologias
+
+def consulta_patologias(pacientes, start_date, end_date):
+    str_fecha_inicio = start_date.strftime("%d/%m/%Y")
+    str_fecha_fin = end_date.strftime("%d/%m/%Y")
+    consulta = pacientes.find({'Casos.Trials.Prescripciones':
+                                   {'$elemMatch':
+                                        {'FechaInicio':
+                                             {'$gt': start_date, '$lt': end_date}
+                                         }
+                                    }
+                               })
+    print('')
+    print(f'Consulta: Pacientes con alguna prescripción de SBRT entre {str_fecha_inicio} y {str_fecha_fin}')
+    list_consulta = [x for x in consulta]  # Volcamos el cursor en una lista que podamos manipular
+    ncon = len(list_consulta)
+    print(f'Numero de pacientes que cumplen la consulta: {ncon}')
+    print('')
+    lista_patologias = []
+    for p in list_consulta:
+        for c in p['Casos']:
+            if 'Trials' in c:
+                for t in c['Trials']:
+                    if 'Prescripciones' in t:
+                        for pres in t['Prescripciones']:
+                            pat = c['Patologia']
+                            area = c['Motivo']
+                            ID = p['ID']
+                            nombre = p['Nombre']
+                            if 'ProtocoloTto' in pres:
+                                proto = pres['ProtocoloTto']
+                            else:
+                                proto = 'Sin Protocolo'
+                            if 'IntencionTto' in pres:
+                                intenc = pres['IntencionTto']
+                            else:
+                                intenc = 'Sin intención'
+                            if 'EsquemaTto' in pres:
+                                esq = pres['EsquemaTto']
+                            else:
+                                esq = 'Sin esquema'
+                            dic = {
+                                'ID': ID,
+                                'Nombre': nombre,
+                                'Patologia': pat,
+                                'Area': area,
+                                'Protocolo': proto,
+                                'IntencionTto': intenc,
+                                'EsquemaTto': esq,
+                                'Numero': 1
+                            }
+                            lista_patologias.append(dic)
+
+    return lista_patologias
 
 def consulta_iniciosTto(pacientes, start_date, end_date):
     str_fecha_inicio = start_date.strftime("%d/%m/%Y")
@@ -262,7 +325,7 @@ def consulta_iniciosTto(pacientes, start_date, end_date):
         y = cont_ALES[x]
         print(f'   {x}: {y}')
 
-    return list_consulta
+    return cont_ALES
 
 def calculo_demoras(pacientes, start_date, end_date):
     str_fecha_inicio = start_date.strftime("%d/%m/%Y")
