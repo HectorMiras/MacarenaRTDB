@@ -9,6 +9,9 @@ def encuentra_problemas(p):
     mensajes = []
     for c in p['Casos']:
         fecha_caso = c['FechaInicio']
+        if 'IniciaFlujo' not in c:
+            mensaje = 'Caso sin indicación de inicio de flujo.'
+            mensajes.append(mensaje)
         if 'Trials' in c:
             for t in c['Trials']:
                 if('Planificaciones' in t):
@@ -81,7 +84,7 @@ def encuentra_problemas(p):
                         if delta.days > 60:
                             mensaje = f'Demora planificación-inicio de {delta.days}'
                             mensajes.append(mensaje)
-                        if delta.days < 0:
+                        if delta.days < 0 and t['Planificaciones'][-1]['Motivo'] not in ['Adaptativa', 'Corrección de planificación previa']:
                             mensaje = f'Fecha de inicio de tratamiento a' \
                                       f'nterior a la planificación {delta.days} días'
                             mensajes.append(mensaje)
