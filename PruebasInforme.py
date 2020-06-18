@@ -9,27 +9,66 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
+import pandas_profiling
+import matplotlib.pyplot as plt
+from io import BytesIO
+from io import StringIO
+from reportlab.lib.utils import ImageReader
+
+
 
 def main():
     client = MongoClient('mongodb://10.233.42.60:27017') # Establece una conexión a MongoDB
     db = client['local'] # Seleccionamos la base de datos "local".
     pacientes = db['PacientesRT'] # Seleccionamos la colección "PacientesRT", que está dentro de la base de datos local
 
-    start_date = datetime.datetime(2020, 1, 1, 0, 0, 0)
-    end_date = datetime.datetime(2020, 3, 31, 0, 0, 0)
+    start_date = datetime.datetime(2020, 4, 1, 0, 0, 0)
+    end_date = datetime.datetime(2020, 6, 30, 0, 0, 0)
 
-
-    lista_pacientes_estadistica_planis = FuncRepo.consulta_estadisticas_planificaciones(pacientes, start_date, end_date)
-    #print(lista_pacientes_estadistica_planis)
-    df_pacientes_ales_tecnica = pandas.DataFrame(lista_pacientes_estadistica_planis)
-    t1 = pandas.pivot_table(df_pacientes_ales_tecnica,
+    df_planificaciones = pandas.DataFrame(FuncRepo.consulta_planificaciones(pacientes, start_date, end_date))
+    #report = pandas_profiling.ProfileReport(df_planificaciones)
+    #report.to_file("report_planificaciones.html")
+    tabla_planis = pandas.pivot_table(df_planificaciones,
                              index=["Acelerador"],
                              values=["Numero"],
                              columns=["Tecnica"],
                              aggfunc=np.sum,
                              fill_value=0,
                              margins=True)
-    print(t1)
+    tabla_demoras_plan = pandas.pivot_table(df_planificaciones,
+                       index=['Patologia'],
+                       values=["Demora_Prescripcion-Plan"],
+                       columns=["Verificacion"],
+                       aggfunc=np.mean,
+                       fill_value=0,
+                       margins=True)
+
+    df_prescripciones = pandas.DataFrame(FuncRepo.consulta_prescripciones(pacientes, start_date, end_date))
+    tabla_patologia_IntencionTto = pandas.pivot_table(df_prescripciones,
+                             index=['Patologia','IntencionTto'],
+                             values=["Numero"],
+                             aggfunc=np.sum,
+                             fill_value=0,
+                             margins=True)
+
+    df_sesiones = pandas.DataFrame(FuncRepo.consulta_sesiones(pacientes, start_date, end_date))
+    tabla_demora_ttos =pandas.pivot_table(df_sesiones,
+                             index=['Patologia'],
+                             values=["Demora_PrimeraConsulta-Inicio", "Demora_Plan-Inicio", "Numero"],
+                             aggfunc={"Demora_PrimeraConsulta-Inicio": np.mean,
+                                      "Demora_Plan-Inicio": np.mean,
+                                      "Numero": np.sum},
+                            fill_value=0,
+                            margins=True)
+
+    tabla_inicios_por_semana = pandas.pivot_table(df_sesiones,
+                                           index=['Semana'],
+                                           values=["Numero"],
+                                           aggfunc=np.sum,
+                                           fill_value=0,
+                                           margins=True)
+
+
 
 
 
@@ -57,12 +96,68 @@ def main():
     Story.append(Spacer(1, 25))
     #colwidths = 50
     #GRID_STYLE = TableStyle()
-    listatabla, n = prepare_df_for_reportlab(t1)
+
+    ptext = f'Planificaciones por técnica y máquina de tratamiento:'
+    ptext = '<font size="12">' + ptext + '</font>'
+    Story.append(Paragraph(ptext, styles["Normal"]))
+    Story.append(Spacer(1, 25))
+    listatabla, n = prepare_pivot_table_for_reportlab(tabla_planis)
     table1 = Table(listatabla, repeatRows=n)
     Story.append(table1)
+    Story.append(Spacer(1, 25))
+
+    ptext = f'Demoras prescripción-planificación:'
+    ptext = '<font size="12">' + ptext + '</font>'
+    Story.append(Paragraph(ptext, styles["Normal"]))
+    Story.append(Spacer(1, 25))
+    listatabla, n = prepare_pivot_table_for_reportlab(tabla_demoras_plan)
+    table1 = Table(listatabla, repeatRows=n)
+    Story.append(table1)
+    Story.append(Spacer(1, 25))
+
+    ptext = f'Patologías e intención de tratamiento:'
+    ptext = '<font size="12">' + ptext + '</font>'
+    Story.append(Paragraph(ptext, styles["Normal"]))
+    Story.append(Spacer(1, 25))
+    listatabla, n = prepare_pivot_table_for_reportlab(tabla_patologia_IntencionTto)
+    table1 = Table(listatabla, repeatRows=n)
+    Story.append(table1)
+    Story.append(Spacer(1, 25))
+
+    ptext = f'Demoras inicios de tratamiento:'
+    ptext = '<font size="12">' + ptext + '</font>'
+    Story.append(Paragraph(ptext, styles["Normal"]))
+    Story.append(Spacer(1, 25))
+    listatabla, n = prepare_pivot_table_for_reportlab(tabla_demora_ttos)
+    table1 = Table(listatabla, repeatRows=n)
+    Story.append(table1)
+    Story.append(Spacer(1, 25))
+
+    ptext = f'Inicios de tratamiento por semana:'
+    ptext = '<font size="12">' + ptext + '</font>'
+    Story.append(Paragraph(ptext, styles["Normal"]))
+    Story.append(Spacer(1, 25))
+    listatabla, n = prepare_pivot_table_for_reportlab(tabla_inicios_por_semana)
+    table1 = Table(listatabla, repeatRows=n)
+    Story.append(table1)
+    Story.append(Spacer(1, 25))
+
+    fig = plt.figure()
+    ax = df_sesiones.hist('Semana')
+    ax = ax[0]
+    imgdata = BytesIO()
+    fig.savefig(imgdata, format='png')
+    imgdata.seek(0)
+    img_ = ImageReader(imgdata)
+    Story.append(img_)
+
     doc.build(Story)
 
 def prepare_df_for_reportlab(df):
+    lista = [df.columns[:, ].values.astype(str).tolist()] + df.values.tolist()
+    return lista
+
+def prepare_pivot_table_for_reportlab(df):
     df2 = df.reset_index() # reset the index so row labels show up in the reportlab table
     n = df2.columns.nlevels # number of table header rows to repeat
     if n > 1:

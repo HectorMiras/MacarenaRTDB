@@ -12,6 +12,11 @@ def encuentra_problemas(p):
         if 'IniciaFlujo' not in c:
             mensaje = 'Caso sin indicación de inicio de flujo.'
             mensajes.append(mensaje)
+        else:
+            if c['IniciaFlujo'] is 'Iniciar':
+                if 'Diagnostico' not in c:
+                    mensaje = 'Caso sin diagnóstico asociado.'
+                    mensajes.append(mensaje)
         if 'Trials' in c:
             for t in c['Trials']:
                 if('Planificaciones' in t):
@@ -172,9 +177,12 @@ def consulta_estadisticas_planificaciones(pacientes, start_date, end_date):
                                         cont_ALES[ale] = cont_ALES[ale] + 1
                                         if 'Tecnica' in pl:
                                             tec = pl['Tecnica']
-
                                         else:
-                                            tec = 'SC'
+                                            tec = 'Sin tecnica'
+                                        if 'Verificaciones' in pl:
+                                            ver = 'Si'
+                                        else:
+                                            ver = 'No'
                                         cont_ALESsTecnicas[ale][tec] = cont_ALESsTecnicas[ale][tec] + 1
                                         lista_pacientes.append(
                                             {
@@ -182,6 +190,7 @@ def consulta_estadisticas_planificaciones(pacientes, start_date, end_date):
                                                 'Nombre': nombre,
                                                 'Acelerador': ale,
                                                 'Tecnica': tec,
+                                                'Verificacion': ver,
                                                 'Numero': 1
                                             })
                             else:
@@ -467,3 +476,336 @@ def calculo_demoras(pacientes, start_date, end_date):
 
     fig.suptitle(f'Demoras entre las fechas {str_fecha_inicio} y {str_fecha_fin}')
     plt.show()
+
+def consulta_simulaciones(pacientes, start_date, end_date):
+    str_fecha_inicio = start_date.strftime("%d/%m/%Y")
+    str_fecha_fin = end_date.strftime("%d/%m/%Y")
+    consulta = pacientes.find(
+        {'Casos.Trials.Simulaciones': {'$elemMatch': {'FechaInicio': {'$gt': start_date, '$lt': end_date}}}})
+    print('')
+    print(f'Consulta: Pacientes con alguna simulación entre {str_fecha_inicio} y {str_fecha_fin}')
+    list_consulta = [x for x in consulta]  # Volcamos el cursor en una lista que podamos manipular
+    ncon = len(list_consulta)
+    print(f'Numero de pacientes que cumplen la consulta: {ncon}')
+    print('')
+    demora_ct_pres = []
+    problemas = []
+    bool_problema = False
+    lista_pacientes = []
+    for p in list_consulta:
+        an = p['ID']
+        nombre = p['Nombre']
+        bool_problema = False
+        for c in p['Casos']:
+            if 'Trials' in c:
+                for t in c['Trials']:
+                    if ('Simulaciones' in t):
+                        for sim in t['Simulaciones']:
+                            if start_date <= sim['FechaInicio'] <= end_date:
+                                delta = datetime.datetime(2100, 12, 25, 0, 0, 0) - \
+                                        datetime.datetime(2000, 12, 25, 0, 0, 0)
+                                delta_sim = sim['FechaInicio'] - c['FechaInicio']
+                                if delta_sim.days > 60:
+                                    mensaje = f'{nombre}. Demora primera consulta-simulacion de {delta_sim.days}'
+                                    problemas.append({an: mensaje})
+                                    bool_problema = True
+                                if bool_problema == False:
+                                    dic = {}
+                                    dic.update(get_info_paciente(p))
+                                    dic.update(get_info_primera_consulta(c))
+                                    dic.update(get_info_simulacion(sim))
+                                    dic2 = {
+                                        'Demora_PrimeraConsulta_Simulacion': delta_sim.days,
+                                        'Numero': 1
+                                    }
+                                    dic.update(dic2)
+                                    lista_pacientes.append(dic)
+                                else:
+                                    bool_problema = False
+
+    print(f'Numero de pacientes con problemas: {len(problemas)}')
+    for prob in problemas:
+        print(prob)
+    print('')
+
+    return lista_pacientes
+
+def consulta_prescripciones(pacientes, start_date, end_date):
+    str_fecha_inicio = start_date.strftime("%d/%m/%Y")
+    str_fecha_fin = end_date.strftime("%d/%m/%Y")
+    consulta = pacientes.find(
+        {'Casos.Trials.Prescripciones': {'$elemMatch': {'FechaInicio': {'$gt': start_date, '$lt': end_date}}}})
+    print('')
+    print(f'Consulta: Pacientes con alguna prescripción entre {str_fecha_inicio} y {str_fecha_fin}')
+    list_consulta = [x for x in consulta]  # Volcamos el cursor en una lista que podamos manipular
+    ncon = len(list_consulta)
+    print(f'Numero de pacientes que cumplen la consulta: {ncon}')
+    print('')
+    demora_ct_pres = []
+    problemas = []
+    bool_problema = False
+    lista_pacientes = []
+    for p in list_consulta:
+        an = p['ID']
+        nombre = p['Nombre']
+        bool_problema = False
+        for c in p['Casos']:
+            if 'Trials' in c:
+                for t in c['Trials']:
+                    if ('Prescripciones' in t) and ('Simulaciones' in t):
+                        for pres in t['Prescripciones']:
+                            if start_date <= pres['FechaInicio'] <= end_date:
+                                # Busca simulación anterior a la prescripcion
+                                sim = t['Simulaciones'][0]
+                                for s in t['Simulaciones']:
+                                    if (s['FechaInicio'] <= pres['FechaInicio']):
+                                        sim = s
+                                delta = datetime.datetime(2100, 12, 25, 0, 0, 0) - \
+                                        datetime.datetime(2000, 12, 25, 0, 0, 0)
+                                delta_sim_pres = pres['FechaInicio'] - sim['FechaInicio']
+                                if delta_sim_pres.days > 30:
+                                    mensaje = f'{nombre}. Demora simulacion-prescripcion de {delta_sim_pres.days}'
+                                    problemas.append({an: mensaje})
+                                    bool_problema = True
+                                if bool_problema == False:
+                                    demora_ct_pres.append(delta.days)
+                                    dic = {}
+                                    dic.update(get_info_paciente(p))
+                                    dic.update(get_info_primera_consulta(c))
+                                    dic.update(get_info_simulacion(sim))
+                                    dic.update((get_info_prescripcion(pres)))
+                                    dic2 = {
+                                        'Demora_Simulacion_Prescripcion': delta_sim_pres.days,
+                                        'Numero': 1
+                                    }
+                                    dic.update(dic2)
+                                    lista_pacientes.append(dic)
+                                else:
+                                    bool_problema = False
+
+    print(f'Numero de pacientes con problemas: {len(problemas)}')
+    for prob in problemas:
+        print(prob)
+    print('')
+
+    return lista_pacientes
+
+def consulta_planificaciones(pacientes, start_date, end_date):
+    str_fecha_inicio = start_date.strftime("%d/%m/%Y")
+    str_fecha_fin = end_date.strftime("%d/%m/%Y")
+    consulta = pacientes.find(
+        {'Casos.Trials.Planificaciones': {'$elemMatch': {'FechaInicio': {'$gt': start_date, '$lt': end_date}}}})
+    print('')
+    print(f'Consulta: Pacientes con alguna planificación entre {str_fecha_inicio} y {str_fecha_fin}')
+    list_consulta = [x for x in consulta]  # Volcamos el cursor en una lista que podamos manipular
+    ncon = len(list_consulta)
+    print(f'Numero de pacientes que cumplen la consulta: {ncon}')
+    print('')
+    demora_pres_plan = []
+    problemas = []
+    bool_problema = False
+    lista_pacientes = []
+    for p in list_consulta:
+        an = p['ID']
+        nombre = p['Nombre']
+        bool_problema = False
+        for c in p['Casos']:
+            if 'Trials' in c:
+                for t in c['Trials']:
+                    if ('Prescripciones' in t) and ('Planificaciones' in t):
+                        for plan in t['Planificaciones']:
+                            if start_date <= plan['FechaInicio'] <= end_date:
+                                # encuentra prescripcion y simulacion correspondiente. La de fecha más cercana
+                                delta = datetime.datetime(2100, 12, 25, 0, 0, 0) - \
+                                        datetime.datetime(2000, 12, 25, 0, 0, 0)
+                                # Busca prescripción anterior a la planificacion
+                                pres = t['Prescripciones'][0]
+                                for pr in t['Prescripciones']:
+                                    if (pr['FechaInicio'] <= plan['FechaInicio']):
+                                        pres = pr
+                                # Busca simulación anterior a la planificacion
+                                sim = t['Simulaciones'][0]
+                                for s in t['Simulaciones']:
+                                    if (s['FechaInicio'] <= plan['FechaInicio']):
+                                        sim = s
+
+                                delta_pres_plan = plan['FechaInicio'] - pres['FechaInicio']
+                                if delta_pres_plan.days > 30:
+                                    mensaje = f'{nombre}. Demora prescripcion-planificacion de {delta_pres_plan.days}'
+                                    problemas.append({an: mensaje})
+                                    bool_problema = True
+                                if delta_pres_plan.days < 0:
+                                    mensaje = f'{nombre}. Fecha de planificación anterior a la prescripción, {delta_pres_plan.days} días'
+                                    problemas.append({an: mensaje})
+                                    bool_problema = True
+                                if bool_problema == False:
+                                    demora_pres_plan.append(delta_pres_plan.days)
+                                    dic = {}
+                                    dic.update(get_info_paciente(p))
+                                    dic.update(get_info_primera_consulta(c))
+                                    dic.update(get_info_simulacion(sim))
+                                    dic.update((get_info_prescripcion(pres)))
+                                    dic.update(get_info_plan(plan))
+                                    dic2 = {
+                                        'Demora_Prescripcion-Plan': delta_pres_plan.days,
+                                        'Numero': 1
+                                    }
+                                    dic.update(dic2)
+                                    lista_pacientes.append(dic)
+                                else:
+                                    bool_problema = False
+
+    print(f'Numero de pacientes con problemas: {len(problemas)}')
+    for prob in problemas:
+        print(prob)
+    print('')
+
+    return lista_pacientes
+
+def consulta_sesiones(pacientes, start_date, end_date):
+    str_fecha_inicio = start_date.strftime("%d/%m/%Y")
+    str_fecha_fin = end_date.strftime("%d/%m/%Y")
+    consulta = pacientes.find(
+        {'Casos.Trials': {'$elemMatch': {'SesionesTto.0.FechaInicio': {'$gt': start_date, '$lt': end_date}}}})
+    print('')
+    print(f'Consulta: Pacientes con primera sesión de tratamiento entre {str_fecha_inicio} y {str_fecha_fin}')
+    list_consulta = [x for x in consulta]  # Volcamos el cursor en una lista que podamos manipular
+    ncon = len(list_consulta)
+    print(f'Numero de pacientes que cumplen la consulta: {ncon}')
+    print('')
+    demora_ct_pres = []
+    demora_pres_plan = []
+    demora_plan_ses = []
+    demora_primeraconsulta_ses = []
+    problemas = []
+    bool_problema = False
+    lista_pacientes = []
+
+    for p in list_consulta:
+        an = p['ID']
+        nombre = p['Nombre']
+        bool_problema = False
+        for c in p['Casos']:
+            if 'Trials' in c:
+                for t in c['Trials']:
+                    if ('SesionesTto' in t):
+                        sesion_inicio = t['SesionesTto'][0]
+                        # Busca planificación anterior a la primera sesión
+                        plan = t['Planificaciones'][0]
+                        for pl in t['Planificaciones']:
+                            if(pl['FechaInicio'] <= sesion_inicio['FechaInicio']):
+                                plan = pl
+                        # Busca prescripción anterior a la primera sesión
+                        pres = t['Prescripciones'][0]
+                        for pr in t['Prescripciones']:
+                            if(pr['FechaInicio'] <= sesion_inicio['FechaInicio']):
+                                pres = pr
+                        # Busca simulación anterior a la primera sesión
+                        sim = t['Simulaciones'][0]
+                        for s in t['Simulaciones']:
+                            if(s['FechaInicio'] <= sesion_inicio['FechaInicio']):
+                                sim = s
+
+                        if start_date <= sesion_inicio['FechaInicio'] <= end_date:
+                            delta = datetime.datetime(2100, 12, 25, 0, 0, 0) - \
+                                    datetime.datetime(2000, 12, 25, 0, 0, 0)
+                            # Demora planificación - primera sesión
+                            delta_plan = sesion_inicio['FechaInicio'] - plan['FechaInicio']
+                            # Demora primera consulta - primera sesión
+                            delta_consulta = sesion_inicio['FechaInicio'] - c['FechaInicio']
+                            if delta_plan.days > 120:
+                                mensaje = f'{nombre}. Demora planificación-inicio de {delta_plan.days}'
+                                problemas.append({an: mensaje})
+                                bool_problema = True
+                            if delta_plan.days < 0:
+                                mensaje = f'{nombre}. Fecha de inicio de tratamiento a' \
+                                          f'nterior a la planificación {delta_plan.days} días'
+                                problemas.append({an: mensaje})
+                                bool_problema = True
+                            if bool_problema == False:
+                                dic = {}
+                                dic.update(get_info_paciente(p))
+                                dic.update(get_info_primera_consulta(c))
+                                dic.update(get_info_simulacion(sim))
+                                dic.update((get_info_prescripcion(pres)))
+                                dic.update(get_info_plan(plan))
+                                dic2 = {
+                                    'Semana': sesion_inicio['FechaInicio'].isocalendar()[1],
+                                    'Demora_PrimeraConsulta-Inicio': delta_consulta.days,
+                                    'Demora_Plan-Inicio': delta_plan.days,
+                                    'Numero': 1
+                                }
+                                dic.update(dic2)
+                                lista_pacientes.append(dic)
+                            else:
+                                bool_problema = False
+
+    print(f'Numero de pacientes con problemas: {len(problemas)}')
+    for prob in problemas:
+        print(prob)
+    print('')
+
+    return lista_pacientes
+
+def get_info_paciente(pac):
+    dic = {}
+    dic = {
+        'ID': pac['ID'],
+        'Nombre': pac['Nombre'],
+        'Edad': pac['Edad'],
+        'Genero': pac['Genero'],
+        'Medico': pac['Medico']
+    }
+
+    return dic
+
+def get_info_primera_consulta(caso):
+    dic = {}
+    dic = {
+        'FechaConsulta': caso['FechaInicio'].date(),
+        'Semana': caso['FechaInicio'].date().isocalendar()[1],
+        'Patologia': caso['Patologia'] if 'Patologia' in caso else 'Sin patologia',
+        'TipoTto': caso['TipoTto'] if 'TipoTto' in caso else 'sin tipo de tto',
+        'Area': caso['Motivo'] if 'Motivo' in caso else 'Sin motivo'
+    }
+
+    return dic
+
+def get_info_simulacion(sim):
+    dic = {}
+    dic = {
+        'FechaTac': sim['FechaInicio'].date(),
+        'Semana': sim['FechaInicio'].date().isocalendar()[1],
+        'Motivo': sim['Motivo'],
+        'Orientacion': sim['Orientacion'] if "Orientacion" in sim else 'Sin orientacion',
+        'zonaAnatomica': sim['zonaAnatomica'] if "zonaAnatomica" in sim else 'sin zona anatomica',
+        'Inmovilizador': sim['Inmovilizador'] if "Inmovilizador" in sim
+        else sim['inmovilizador'] if "inmovilizador" in sim else 'Sin inmovilizador'
+    }
+
+    return dic
+
+
+def get_info_prescripcion(pres):
+    dic = {}
+    dic = {
+        'FechaPrescripcion': pres['FechaInicio'].date(),
+        'Semana': pres['FechaInicio'].date().isocalendar()[1],
+        'ProtocoloTto': pres['ProtocoloTto'] if 'ProtocoloTto' in pres else 'Sin protocolo',
+        'IntencionTto': pres['IntencionTto'] if 'IntencionTto' in pres else 'Sin intencion',
+        'EsquemaTto': pres['EsquemaTto'] if 'EsquemaTto' in pres else 'Sin esquema'
+    }
+
+    return dic
+
+def get_info_plan(plan):
+    dic = {}
+    dic = {
+        'FechaPlan': plan['FechaInicio'].date(),
+        'Semana': plan['FechaInicio'].date().isocalendar()[1],
+        'Tecnica': plan['Tecnica'] if 'Tecnica' in plan else 'Sin tecnica',
+        'Acelerador': plan['Acelerador'] if 'Acelerador' in plan else 'Sin acelerador',
+        'Radiofisico': plan['Radiofisico'] if 'Radiofisico' in plan else 'Sin radiofisico',
+        'Verificacion': 'Si' if 'Verificaciones' in plan else 'No'
+    }
+    return dic
