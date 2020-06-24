@@ -59,15 +59,15 @@ def encuentra_problemas(p):
                     for pl in t['Planificaciones']:
                         # encuentra prescripcion y simulacion correspondiente. La de fecha más cercana
                         delta = datetime.datetime(2100, 12, 25, 0, 0, 0) - datetime.datetime(2000, 12, 25, 0, 0, 0)
-                        for s in t['Simulaciones']:
-                            if abs((pl['FechaInicio'] - s['FechaInicio']).days) < delta.days:
-                                delta = pl['FechaInicio'] - s['FechaInicio']
-                                sim = s
-                        delta = datetime.datetime(2100, 12, 25, 0, 0, 0) - datetime.datetime(2000, 12, 25, 0, 0, 0)
+                        # Busca prescripción anterior a la planificacion
+                        pres = t['Prescripciones'][0]
                         for pr in t['Prescripciones']:
-                            if abs((pl['FechaInicio'] - pr['FechaInicio']).days) < delta.days:
-                                delta = pl['FechaInicio'] - pr['FechaInicio']
+                            if (pr['FechaInicio'] <= pl['FechaInicio']):
                                 pres = pr
+                        sim = t['Simulaciones'][0]
+                        for s in t['Simulaciones']:
+                            if (s['FechaInicio']  <= pr['FechaInicio']):
+                                sim = s
                         delta = pres['FechaInicio'] - sim['FechaInicio']
                         if delta.days > 30:
                             mensaje = f'Demora simulacion-prescripcion de {delta.days}'
@@ -85,7 +85,7 @@ def encuentra_problemas(p):
                             mensajes.append(mensaje)
 
                     if 'SesionesTto' in t:
-                        delta = t['SesionesTto'][0]['FechaInicio'] - t['Planificaciones'][-1]['FechaInicio']
+                        delta = t['SesionesTto'][0]['FechaInicio'] - pl['FechaInicio']
                         if delta.days > 60:
                             mensaje = f'Demora planificación-inicio de {delta.days}'
                             mensajes.append(mensaje)
@@ -102,7 +102,8 @@ def encuentra_problemas(p):
                         delta = hoy - pl['FechaInicio']
                         fecha_plan = pl['FechaInicio'].strftime("%d/%m/%Y")
                         mensaje = f'La planificacion {fecha_plan} no tiene sesiones de tratamiento, {delta.days} días'
-                        #mensajes.append(mensaje)
+                        #if delta.days>60:
+                            #mensajes.append(mensaje)
     if len(mensajes) > 0:
         problema = {'ID': an, 'Nombre': nombre, 'Problemas': mensajes}
     else:
@@ -117,7 +118,6 @@ def consulta_pacientes_problemas(pacientes, start_date, end_date):
     consulta = pacientes.find(
         {'Casos.Trials.Planificaciones':
              {'$elemMatch': {'FechaInicio': {'$gt': start_date, '$lt': end_date}}}})
-
     print('')
     print(f'Consulta: Pacientes con alguna planificación entre {str_fecha_inicio} y {str_fecha_fin}')
     list_consulta = [x for x in consulta]  # Volcamos el cursor en una lista que podamos manipular
