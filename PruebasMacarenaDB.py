@@ -60,7 +60,7 @@ def main():
                              fill_value=0,
                              margins=True))
     print(pandas.pivot_table(df_prescripciones,
-                             index=['Patologia', 'IntencionTto'],
+                             index=['ProtocoloTto'],
                              values=["Numero"],
                              aggfunc=np.sum,
                              fill_value=0,

@@ -66,7 +66,7 @@ def encuentra_problemas(p):
                                 pres = pr
                         sim = t['Simulaciones'][0]
                         for s in t['Simulaciones']:
-                            if (s['FechaInicio']  <= pr['FechaInicio']):
+                            if (s['FechaInicio']  <= pres['FechaInicio']):
                                 sim = s
                         delta = pres['FechaInicio'] - sim['FechaInicio']
                         if delta.days > 30:
@@ -638,6 +638,10 @@ def consulta_planificaciones(pacientes, start_date, end_date):
                                     mensaje = f'{nombre}. Fecha de planificación anterior a la prescripción, {delta_pres_plan.days} días'
                                     problemas.append({an: mensaje})
                                     bool_problema = True
+                                if 'SesionesTto' in t:
+                                    inicioTto = t['SesionesTto'][0]['FechaInicio'].date()
+                                else:
+                                    inicioTto = 'Sin sesiones'
                                 if bool_problema == False:
                                     demora_pres_plan.append(delta_pres_plan.days)
                                     dic = {}
@@ -648,6 +652,7 @@ def consulta_planificaciones(pacientes, start_date, end_date):
                                     dic.update(get_info_plan(plan))
                                     dic2 = {
                                         'Demora_Prescripcion-Plan': delta_pres_plan.days,
+                                        'InicioTto': inicioTto,
                                         'Numero': 1
                                     }
                                     dic.update(dic2)
@@ -806,6 +811,7 @@ def get_info_plan(plan):
         'Tecnica': plan['Tecnica'] if 'Tecnica' in plan else 'Sin tecnica',
         'Acelerador': plan['Acelerador'] if 'Acelerador' in plan else 'Sin acelerador',
         'Radiofisico': plan['Radiofisico'] if 'Radiofisico' in plan else 'Sin radiofisico',
-        'Verificacion': 'Si' if 'Verificaciones' in plan else 'No'
+        'Verificacion': 'Con verificacion' if 'Verificaciones' in plan else 'Sin verificacion'
     }
+
     return dic
