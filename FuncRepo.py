@@ -781,7 +781,7 @@ def get_info_simulacion(sim):
     dic = {
         'FechaTac': sim['FechaInicio'].date(),
         'Semana': sim['FechaInicio'].date().isocalendar()[1],
-        'Motivo': sim['Motivo'],
+        'Motivo': sim['Motivo'] if "Motivo" in sim else 'Sin Motivo',
         'Orientacion': sim['Orientacion'] if "Orientacion" in sim else 'Sin orientacion',
         'zonaAnatomica': sim['zonaAnatomica'] if "zonaAnatomica" in sim else 'sin zona anatomica',
         'Inmovilizador': sim['Inmovilizador'] if "Inmovilizador" in sim

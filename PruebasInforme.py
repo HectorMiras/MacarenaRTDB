@@ -24,8 +24,8 @@ def main():
     db = client['local'] # Seleccionamos la base de datos "local".
     pacientes = db['PacientesRT'] # Seleccionamos la colección "PacientesRT", que está dentro de la base de datos local
 
-    start_date = datetime.datetime(2020, 1, 1, 0, 0, 0)
-    end_date = datetime.datetime(2020, 6, 30, 0, 0, 0)
+    start_date = datetime.datetime(2019, 10, 1, 0, 0, 0)
+    end_date = datetime.datetime(2020, 7, 9, 0, 0, 0)
 
     excelfilename = "ConsultaBD.xlsx"
 
