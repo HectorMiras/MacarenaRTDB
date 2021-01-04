@@ -693,7 +693,10 @@ def consulta_sesiones(pacientes, start_date, end_date):
         for c in p['Casos']:
             if 'Trials' in c:
                 for t in c['Trials']:
-                    if ('SesionesTto' in t):
+                    if (('SesionesTto' in t)
+                            and ('Simulaciones' in t)
+                            and ('Planificaciones' in t)
+                            and ('Prescripciones' in t)):
                         sesion_inicio = t['SesionesTto'][0]
                         # Busca planificación anterior a la primera sesión
                         plan = t['Planificaciones'][0]

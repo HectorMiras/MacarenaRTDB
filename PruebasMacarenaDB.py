@@ -10,8 +10,9 @@ def main():
     db = client['local'] # Seleccionamos la base de datos "local".
     pacientes = db['PacientesRT'] # Seleccionamos la colección "PacientesRT", que está dentro de la base de datos local
 
-    start_date = datetime.datetime(2020, 4, 1, 0, 0, 0)
-    end_date = datetime.datetime(2020, 7, 9, 0, 0, 0)
+    start_date = datetime.datetime(2019, 1, 1, 0, 0, 0)
+    end_date = datetime.datetime(2019, 12, 31, 0, 0, 0)
+
 
     #lista_pacientes_problemas = FuncRepo.consulta_pacientes_problemas(pacientes, start_date, end_date)
     #pd_problemas = pandas.DataFrame(lista_pacientes_problemas)
