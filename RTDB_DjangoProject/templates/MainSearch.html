@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h1>Hola {{name}}. Estás es la plantilla MainSearch.html</h1>
+
+<form action="mainSearch" method="post">
+
+    {% csrf_token %}
+
+    Introduce fecha inicial: <input type="date" name="fecha1"><br>
+    Introduce fecha final: <input type="date" name="fecha2"><br>
+    <input type="submit">
+</form>
+
+<div>
+    {{mensaje}}
+</div>
+
+
+{% endblock %}
