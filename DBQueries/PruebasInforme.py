@@ -1,20 +1,13 @@
 from pymongo import MongoClient
 import datetime
-import FuncRepo
+from DBQueries import FuncRepo
 import pandas
 import numpy as np
-from reportlab.lib.enums import TA_JUSTIFY
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
-from reportlab.lib.units import inch
-import pandas_profiling
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table
+from reportlab.lib.styles import getSampleStyleSheet
 import matplotlib.pyplot as plt
 from io import BytesIO
-from io import StringIO
-from reportlab.lib.utils import ImageReader
-from matplotlib.ticker import MaxNLocator
 import openpyxl
 
 
@@ -24,8 +17,8 @@ def main():
     db = client['local'] # Seleccionamos la base de datos "local".
     pacientes = db['PacientesRT'] # Seleccionamos la colección "PacientesRT", que está dentro de la base de datos local
 
-    start_date = datetime.datetime(2019, 1, 1, 0, 0, 0)
-    end_date = datetime.datetime(2019, 12, 31, 0, 0, 0)
+    start_date = datetime.datetime(2018, 1, 1, 0, 0, 0)
+    end_date = datetime.datetime(2021, 1, 27, 0, 0, 0)
 
     excelfilename = "ConsultaBD.xlsx"
 

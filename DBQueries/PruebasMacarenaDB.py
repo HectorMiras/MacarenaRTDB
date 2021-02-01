@@ -1,6 +1,6 @@
 from pymongo import MongoClient
 import datetime
-import FuncRepo
+from DBQueries import FuncRepo
 import pandas
 import numpy as np
 import pandas_profiling
@@ -34,7 +34,7 @@ def main():
                              fill_value=0,
                              margins=True))
 
-    df_planificaciones = pandas.DataFrame(FuncRepo.consulta_planificaciones(pacientes,start_date,end_date))
+    df_planificaciones = pandas.DataFrame(FuncRepo.consulta_planificaciones(pacientes, start_date, end_date))
     report = pandas_profiling.ProfileReport(df_planificaciones)
     report.to_file("report_planificaciones.html")
     print(pandas.pivot_table(df_planificaciones,
